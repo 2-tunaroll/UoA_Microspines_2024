@@ -10,8 +10,25 @@
 # Includes all port-related functions:
 # init, open, close, and get port
 
-from dynamixel import getch     # import getch function from driver file
 from dynamixel_sdk import *     # import necessary port initialiser config from SDK
+
+import os
+
+if os.name == 'nt':
+    import msvcrt
+    def getch():
+        return msvcrt.getch().decode()
+else:
+    import sys, tty, termios
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    def getch():
+        try:
+            tty.setraw(sys.stdin.fileno())
+            ch = sys.stdin.read(1)
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        return ch
 
 # Default setting
 BAUDRATE = 57600                 # Dynamixel default baudrate : 57600

@@ -20,10 +20,10 @@ port.init()
 port.open()
 
 # create instance of motor using current ID
-motor = Servo(1, port.handler)
+motor = Servo(7, port.handler)
 
 # ID to be set
-motor.setID(7)
+motor.setID(3)
 
 # close port to finish command
 port.close()

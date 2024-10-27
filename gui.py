@@ -15,6 +15,9 @@
 import tkinter as tk                # import tkinter as a class for 
 from tkinter import *               # import all tkinter functions
 from types import NoneType          # import NoneType for checking when registers are empty
+from matplotlib.figure import Figure
+import matplotlib.dates as mdates
+from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,  NavigationToolbar2Tk) 
 from tkmacosx import Button         # import MacOS compatible tkinter Button
 from PIL import ImageTk,Image       # import Image functionality which works with Tkinter
 
@@ -38,8 +41,8 @@ PID_GAINS = [
 ]
 
 # Current (torque) values from motor calibration
-MAX_TORQUE = 221
-GRIP_TORQUE = 221
+MAX_TORQUE = 400
+GRIP_TORQUE = 400
 
 # Motor ID Values
 ID_vals = [1, 2, 3, 4, 5, 6]
@@ -58,7 +61,7 @@ class Gui(tk.Tk):
     # buttons and timestamps are setup
     engage_button = None
     disengage_button = None
-    estop_botton = None
+    estop_button = None
     time = None
     load_dict = []
    
@@ -75,11 +78,18 @@ class Gui(tk.Tk):
         self.port.init()
         self.time = datetime.datetime.now()
 
+        ## Plot figures and canvas
+        self.fig = Figure(figsize=(5, 5), dpi=100)
+        self.plot1 = self.fig.add_subplot(111)
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self)
+
         ## GUI Window setup
         self.STATE = 'IDLE'
         self.currState = StringVar()
         self.currState.set('IDLE')
         self.loadData = StringVar()
+        self.avgLoad = []
+        self.timestamp = []
         self.engage_button = Button(
             self, 
             text="Engage", 
@@ -101,14 +111,23 @@ class Gui(tk.Tk):
         self.disengage_button.config(bg='orange')
         self.disengage_button.config(state=tk.DISABLED)
 
-        self.estop_botton = Button(
+        self.estop_button = Button(
             self, 
             text="E-STOP", 
-            command=lambda :self.disengage_function(), 
+            command=lambda :self.estop_function(), 
             font=("Arial 25 bold"), 
             cursor="spider",
             activeforeground="red",
             fg="red"
+        )
+
+        self.save_button = Button(
+            self,
+            text="Save",
+            command=lambda :self.save_plot(),
+            font=("Arial 25 bold"),
+            activeforeground="blue",
+            fg="blue"
         )
 
     ##################################
@@ -147,6 +166,13 @@ class Gui(tk.Tk):
         self.engage_button.config(state=tk.NORMAL)
         self.disengage_button.config(state=tk.DISABLED)
 
+    def estop_function(self):
+
+        self.avgLoad.clear()
+        self.timestamp.clear()
+        self.time = datetime.datetime.now()
+        self.disengage_function()
+
     ###########################
     ## DASHBOARD ENVIRONMENT ##
     ###########################
@@ -166,7 +192,8 @@ class Gui(tk.Tk):
         # create all buttons
         self.engage_button.place(x=50,y=250)
         self.disengage_button.place(x=50,y=500)
-        self.estop_botton.place(x=10, y=10)
+        self.estop_button.place(x=10, y=10)
+        self.save_button.place(x=900, y=650)
 
         # set text for getting current Status of motors
         state_label = Label(self, textvariable=self.currState, font='Arial 50 bold')
@@ -174,10 +201,18 @@ class Gui(tk.Tk):
 
         # set text for getting current Status of load
         load_label = Label(self, textvariable=self.loadData, font='Arial 25')
-        load_label.place(x=500, y=250)
+        load_label.place(x=750, y=700)
+
+        self.canvas.draw()
+        self.canvas.get_tk_widget().pack()
+        toolbar = NavigationToolbar2Tk(self.canvas, self)
+        toolbar.update()
 
         # Position image
         label1.place(x=0,y=700)
+
+        # put graph on
+        self.make_plot()
 
     #################
     ## MOTOR SETUP ##
@@ -216,8 +251,13 @@ class Gui(tk.Tk):
 
     def update_load(self):
         # Get time as a difference from when class was initialised
-        timeStamp = str(datetime.datetime.now() - self.time)
-        message = timeStamp + "\n"
+        elapsed_time = datetime.datetime.now() - self.time
+        elapsed_seconds = elapsed_time.total_seconds()
+
+        timeStamp = str(datetime.timedelta(seconds=elapsed_seconds))
+        message = f"Load Limit: {str(round((51.165 + (4.568 * MAX_TORQUE))/1000, 2))} kg\n{timeStamp}\n"
+
+        avg_load = 0
         
         # Get all load data from each motor
         for motor in self.motors:
@@ -228,10 +268,48 @@ class Gui(tk.Tk):
             # Add load data to dictionary array
             presentLoad_data = {'Time': timeStamp, 'ID':ID, 'Position':pos, 'Load':load}
             self.load_dict.append(presentLoad_data)
-        
+            avg_load += load
+
+
+        # avg_load = avg_load / len(self.motors)  # divide to get average load
+
+        self.avgLoad.append(avg_load)
+        self.timestamp.append(elapsed_seconds)
+
+        self.make_plot()
         # Show data on GUI
         self.loadData.set(message)
         self.after(200, self.update())
+
+    def make_plot(self):
+        
+
+        # plotting the graph 
+        self.plot1.clear()
+        self.plot1.plot(self.timestamp, self.avgLoad)
+
+        # Set x-axis label format for seconds
+        self.plot1.set_xlabel("Elapsed Time (s)")
+        self.plot1.set_ylabel("Average Load")
+
+        # Set date format for x-axis with appropriate spacing
+        # self.plot1.xaxis.set_major_locator(mdates.AutoDateLocator())  
+        # self.plot1.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))  # Use hour-minute-second format
+        
+
+        # Rotate and align x-axis labels for better readability
+        self.plot1.tick_params(axis='x', rotation=45)
+        self.fig.tight_layout()  # Adjust layout to prevent clipping
+
+        # Refresh the canvas
+        self.canvas.draw() 
+
+
+    def save_plot(self, filename="load_graph.png"):
+        # Save the figure to a file
+        self.fig.savefig(filename, format='png')
+        print(f"Graph saved as {filename}")
+
 
     #########################
     ## STATE MACHINE LOGIC ##
@@ -245,6 +323,7 @@ class Gui(tk.Tk):
                 motor.reboot()
 
         self.update_load()          # Update data for loads
+        self.make_plot()
         state = self.get_state()    # Get latest state
 
         # Run State Machine cases
@@ -276,22 +355,22 @@ class Gui(tk.Tk):
             #--------------#
             ## HOLD STATE ##
             #--------------#
-            case 'HOLD':
+            # case 'HOLD':
                 # Check if any motors have shutdown
-                for motor in self.motors:
-                    curr_pos = motor.getPos()
-                    curr_load = motor.getLoad()
+                # for motor in self.motors:
+                #     curr_pos = motor.getPos()
+                #     curr_load = motor.getLoad()
 
-                    # if no load then wait until reboot has occured
-                    # then activate motors to engage
-                    if (curr_load == 0.0):
-                        if isinstance(curr_pos, NoneType):
-                            break
+                #     # if no load then wait until reboot has occured
+                #     # then activate motors to engage
+                #     if (curr_load == 0.0):
+                #         if isinstance(curr_pos, NoneType):
+                #             break
                         
-                        if curr_pos:
-                            motor.enable()
-                            motor.setCurrLim(GRIP_TORQUE)
-                            motor.setPos(curr_pos - 200)
+                #         if curr_pos:
+                #             motor.enable()
+                #             motor.setCurrLim(GRIP_TORQUE)
+                #             motor.setPos(curr_pos - 200)
 
             #-----------------#
             ## DETTACH STATE ##
