@@ -255,16 +255,16 @@ class Gui(tk.Tk):
         elapsed_seconds = elapsed_time.total_seconds()
 
         timeStamp = str(datetime.timedelta(seconds=elapsed_seconds))
-        message = f"Load Limit: {str(round((51.165 + (4.568 * MAX_TORQUE))/1000, 2))} kg\n{timeStamp}\n"
+        message = f"Load Limit: {str(round(((51.165 + (4.568 * MAX_TORQUE))/1000)*9.81, 2))} N\n{timeStamp}\n"
 
         avg_load = 0
         
         # Get all load data from each motor
         for motor in self.motors:
-            load = motor.getLoad()
+            load = motor.getLoad() * 9.81
             pos = motor.getPos()
             ID = motor.ID
-            message += "[ID: " + str(ID) + "] Load: " + str(round(load, 4)) + "kg" + "    Position: " + str(pos) + "\n"
+            message += "[ID: " + str(ID) + "] Load: " + str(round(load, 4)) + "N" + "    Position: " + str(pos) + "\n"
             # Add load data to dictionary array
             presentLoad_data = {'Time': timeStamp, 'ID':ID, 'Position':pos, 'Load':load}
             self.load_dict.append(presentLoad_data)
@@ -290,7 +290,7 @@ class Gui(tk.Tk):
 
         # Set x-axis label format for seconds
         self.plot1.set_xlabel("Elapsed Time (s)")
-        self.plot1.set_ylabel("Average Load")
+        self.plot1.set_ylabel("Average Applied Load (N)")
 
         # Set date format for x-axis with appropriate spacing
         # self.plot1.xaxis.set_major_locator(mdates.AutoDateLocator())  
