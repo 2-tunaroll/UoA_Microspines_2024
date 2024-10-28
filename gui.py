@@ -18,13 +18,16 @@ from types import NoneType          # import NoneType for checking when register
 from matplotlib.figure import Figure
 import matplotlib.dates as mdates
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,  NavigationToolbar2Tk) 
-from tkmacosx import Button         # import MacOS compatible tkinter Button
 from PIL import ImageTk,Image       # import Image functionality which works with Tkinter
 
 import dynamixel                    # import dynamixel driver to get specific calibrated values
 from port import Port               # import Port class to establish port connection to microcontroller 
 from servo import Servo             # import Servo class file to connect to servo motors
+
 from config import mac as config    # import mac config for setting mac specific configurations
+
+from tkmacosx import Button         # import MacOS compatible tkinter Button
+# from tkinter import Button        # Import this instead when using windows
 
 import datetime                     # import datetime for recording timestamps
 import csv                          # import csv for saving data to csv
