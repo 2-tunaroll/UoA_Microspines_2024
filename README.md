@@ -4,8 +4,9 @@ Code for driving the Dynamixel XL330-M288-T servos.
 ## Contents
  - `dynamixel.py` - dynamixel driver implementing serial comms
  - `servo.py` - servo class for each dynamixel
- - `gait.py` - different gaits for limbs (may not be applicable to us yet)
- - `waveform.py` - waveform generator for unique gaits (may not be applicable to us yet)
+ - `gui.py` - graphical user interface implementation file
+ - `main.py` - main file for running anchoring system
+ - `port.py` - Port class file, used to connect to microcontroller
 
 # Getting Started
 ## Software Setup
